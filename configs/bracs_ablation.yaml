@@ -1,0 +1,93 @@
+base_config: configs/bracs_server.yaml
+output_dir: results/ablation_core
+summary_name: ablation_summary.csv
+metric: val_f1_macro
+mode: max
+wandb_run_prefix: ablation_core
+seeds: [1027]
+
+# One-variable-at-a-time ablations around the current best configs/bracs_server.yaml.
+# These runs inherit all training settings from the best config and only change
+# max_retrieved, ratio, cls_ratio, or normalize_features.
+common_overrides:
+  run_test_after_train: false
+  wandb: true
+
+trials:
+  - name: baseline
+    overrides:
+      max_retrieved: 256
+      
+      ratio: 0.02
+      cls_ratio: 0.8
+      normalize_features: true
+
+  - name: max_retrieved_64
+    overrides:
+      max_retrieved: 64
+      ratio: 0.02
+      cls_ratio: 0.8
+      normalize_features: true
+
+  - name: max_retrieved_128
+    overrides:
+      max_retrieved: 128
+      ratio: 0.02
+      cls_ratio: 0.8
+      normalize_features: true
+
+  - name: max_retrieved_512
+    overrides:
+      max_retrieved: 512
+      ratio: 0.02
+      cls_ratio: 0.8
+      normalize_features: true
+
+  - name: ratio_0.005
+    overrides:
+      max_retrieved: 256
+      ratio: 0.005
+      cls_ratio: 0.8
+      normalize_features: true
+
+  - name: ratio_0.01
+    overrides:
+      max_retrieved: 256
+      ratio: 0.01
+      cls_ratio: 0.8
+      normalize_features: true
+
+  - name: ratio_0.05
+    overrides:
+      max_retrieved: 256
+      ratio: 0.05
+      cls_ratio: 0.8
+      normalize_features: true
+
+  - name: cls_ratio_1.0
+    overrides:
+      max_retrieved: 256
+      ratio: 0.02
+      cls_ratio: 1.0
+      normalize_features: true
+
+  - name: cls_ratio_0.5
+    overrides:
+      max_retrieved: 256
+      ratio: 0.02
+      cls_ratio: 0.5
+      normalize_features: true
+
+  - name: cls_ratio_0.0
+    overrides:
+      max_retrieved: 256
+      ratio: 0.02
+      cls_ratio: 0.0
+      normalize_features: true
+
+  - name: normalize_features_false
+    overrides:
+      max_retrieved: 256
+      ratio: 0.02
+      cls_ratio: 0.8
+      normalize_features: false

@@ -1,0 +1,145 @@
+base_config: configs/bracs_server.yaml
+output_dir: results/tuning_stage1
+metric: val_f1_macro
+mode: max
+wandb_run_prefix: tune_stage1
+seeds: [1027]
+
+# Stage 1 is intentionally capped so you can compare trials quickly on a 24GB
+# GPU. After choosing the best trial, copy its config and set max_patches and
+# eval_max_patches back to null for the final full-WSI run.
+common_overrides:
+  max_patches: 32768
+  eval_max_patches: 32768
+  max_epochs: 50
+  patience: 8
+  selection_metric: f1_macro
+  scheduler: plateau
+  scheduler_factor: 0.5
+  scheduler_patience: 4
+  run_test_after_train: false
+  wandb: true
+
+trials:
+  - name: lr5e-5_ret128_dp03_wd1e-4_inv-sqrt
+    overrides:
+      lr: 0.00005
+      max_retrieved: 128
+      dropout: 0.3
+      weight_decay: 0.0001
+      class_weighting: inverse_sqrt
+      balanced_sampler: false
+      grad_accum_steps: 4
+
+  - name: lr2e-5_ret128_dp03_wd1e-4_inv-sqrt
+    overrides:
+      lr: 0.00002
+      max_retrieved: 128
+      dropout: 0.3
+      weight_decay: 0.0001
+      class_weighting: inverse_sqrt
+      balanced_sampler: false
+      grad_accum_steps: 4
+
+  - name: lr1e-4_ret128_dp03_wd1e-4_inv-sqrt
+    overrides:
+      lr: 0.0001
+      max_retrieved: 128
+      dropout: 0.3
+      weight_decay: 0.0001
+      class_weighting: inverse_sqrt
+      balanced_sampler: false
+      grad_accum_steps: 4
+
+  - name: lr5e-5_ret256_dp03_wd1e-4_inv-sqrt
+    overrides:
+      lr: 0.00005
+      max_retrieved: 256
+      dropout: 0.3
+      weight_decay: 0.0001
+      class_weighting: inverse_sqrt
+      balanced_sampler: false
+      grad_accum_steps: 4
+
+  - name: lr5e-5_ret64_dp03_wd1e-4_inv-sqrt
+    overrides:
+      lr: 0.00005
+      max_retrieved: 64
+      dropout: 0.3
+      weight_decay: 0.0001
+      class_weighting: inverse_sqrt
+      balanced_sampler: false
+      grad_accum_steps: 4
+
+  - name: lr5e-5_ret128_dp02_wd1e-4_inv-sqrt
+    overrides:
+      lr: 0.00005
+      max_retrieved: 128
+      dropout: 0.2
+      weight_decay: 0.0001
+      class_weighting: inverse_sqrt
+      balanced_sampler: false
+      grad_accum_steps: 4
+
+  - name: lr5e-5_ret128_dp04_wd1e-4_inv-sqrt
+    overrides:
+      lr: 0.00005
+      max_retrieved: 128
+      dropout: 0.4
+      weight_decay: 0.0001
+      class_weighting: inverse_sqrt
+      balanced_sampler: false
+      grad_accum_steps: 4
+
+  - name: lr5e-5_ret128_dp03_wd1e-5_inv-sqrt
+    overrides:
+      lr: 0.00005
+      max_retrieved: 128
+      dropout: 0.3
+      weight_decay: 0.00001
+      class_weighting: inverse_sqrt
+      balanced_sampler: false
+      grad_accum_steps: 4
+
+  - name: lr5e-5_ret128_dp03_wd5e-4_inv-sqrt
+    overrides:
+      lr: 0.00005
+      max_retrieved: 128
+      dropout: 0.3
+      weight_decay: 0.0005
+      class_weighting: inverse_sqrt
+      balanced_sampler: false
+      grad_accum_steps: 4
+
+  - name: lr5e-5_ret128_dp03_wd1e-4_no-weight
+    overrides:
+      lr: 0.00005
+      max_retrieved: 128
+      dropout: 0.3
+      weight_decay: 0.0001
+      class_weighting: none
+      balanced_sampler: false
+      grad_accum_steps: 4
+
+  - name: lr5e-5_ret128_dp03_wd1e-4_sampler
+    overrides:
+      lr: 0.00005
+      max_retrieved: 128
+      dropout: 0.3
+      weight_decay: 0.0001
+      class_weighting: none
+      balanced_sampler: true
+      sampler_weighting: inverse_sqrt
+      grad_accum_steps: 4
+
+  - name: lr5e-5_ret128_dp03_wd1e-4_16k
+    overrides:
+      lr: 0.00005
+      max_patches: 16384
+      eval_max_patches: 16384
+      max_retrieved: 128
+      dropout: 0.3
+      weight_decay: 0.0001
+      class_weighting: inverse_sqrt
+      balanced_sampler: false
+      grad_accum_steps: 4

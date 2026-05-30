@@ -1,0 +1,52 @@
+base_config: configs/bracs_server.yaml
+output_dir: results/tuning_stage2_from_009
+metric: val_f1_macro
+mode: max
+wandb_run_prefix: tune_stage2_009
+seeds: [1027]
+
+# Focused stage 2 around the best stage-1 trial:
+# lr5e-5_ret128_dp03_wd5e-4_inv-sqrt
+#
+# Stage-1 best values:
+#   lr: 0.00005
+#   max_retrieved: 128
+#   dropout: 0.3
+#   weight_decay: 0.0005
+#   class_weighting: inverse_sqrt
+#   balanced_sampler: false
+#   grad_accum_steps: 4
+#
+# Since weight_decay=0.0005 was the best value and was the upper edge of the
+# stage-1 sweep, this grid extends upward to test whether stronger regularizing
+# weight decay is better. Patch bags are raised to 16384 to confirm the stage-1
+# result with more WSI context while still avoiding full-WSI runtime.
+#
+# Grid size: 3 x 3 x 3 x 2 = 54 trials.
+common_overrides:
+  max_patches: 32768
+  eval_max_patches: 32768
+  train_sampling: random
+  eval_sampling: uniform
+  normalize_features: true
+  batch_size: 1
+  ratio: 0.02
+  cls_ratio: 0.8
+  class_weighting: inverse_sqrt
+  balanced_sampler: false
+  sampler_weighting: inverse_sqrt
+  scheduler: plateau
+  scheduler_factor: 0.5
+  scheduler_patience: 4
+  selection_metric: f1_macro
+  grad_accum_steps: 4
+  max_epochs: 35
+  patience: 10
+  run_test_after_train: false
+  wandb: true
+
+grid:
+  lr: [0.00003, 0.00005, 0.00007]
+  max_retrieved: [96, 128, 192]
+  weight_decay: [0.0005, 0.001, 0.002]
+  dropout: [0.3, 0.4]

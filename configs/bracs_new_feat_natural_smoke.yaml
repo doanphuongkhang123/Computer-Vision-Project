@@ -1,0 +1,51 @@
+seed: 1027
+
+data_dir: data
+train_csv: data/train.csv
+val_csv: data/val.csv
+test_csv: data/test.csv
+
+results_dir: results/bracs_new_feat_natural_smoke
+save_name: bracs_new_feat_natural_smoke
+wandb: false
+wandb_project: bracs_wsi_classification
+wandb_run_name: bracs_new_feat_natural_smoke
+wandb_api_key: ""
+wandb_api_key_file: wandb_api_key.txt
+
+num_classes: 3
+class_names: [Benign, Atypical, Malignant]
+hidden_size: 512
+
+max_patches: 128
+eval_max_patches: 128
+train_sampling: random
+eval_sampling: uniform
+normalize_features: true
+
+batch_size: 1
+num_workers: 0
+grad_accum_steps: 1
+
+ratio: 0.02
+max_retrieved: 16
+dropout: 0.3
+cls_ratio: 0.8
+zero_init_head: true
+
+lr: 0.00005
+min_lr: 0.000005
+weight_decay: 0.0001
+max_epochs: 1
+patience: 2
+label_smoothing: 0.0
+class_weighting: inverse_sqrt
+balanced_sampler: false
+sampler_weighting: inverse_sqrt
+selection_metric: f1_macro
+scheduler: none
+scheduler_factor: 0.5
+scheduler_patience: 5
+
+amp: true
+grad_clip: 1.0

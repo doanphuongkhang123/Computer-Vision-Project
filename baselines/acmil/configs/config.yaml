@@ -1,0 +1,53 @@
+seed: 1027
+
+train_csv: data/train.csv
+val_csv: data/val.csv
+test_csv: data/test.csv
+
+results_dir: results/acmil
+wandb: false
+wandb_project: bracs_wsi_classification
+wandb_run_name: acmil
+wandb_api_key: ""
+wandb_api_key_file: wandb_api_key.txt
+
+num_classes: 3
+class_names: [Benign, Atypical, Malignant]
+hidden_size: 1536
+model: acmil
+
+max_patches: null
+eval_max_patches: null
+train_sampling: random
+eval_sampling: uniform
+normalize_features: true
+
+batch_size: 1
+num_workers: 4
+grad_accum_steps: 4
+
+acmil_dim: 512
+acmil_attn_dim: 128
+acmil_n_token: 5
+acmil_sub_loss_weight: 1.0
+acmil_diversity_loss_weight: 1.0
+baseline_dropout: 0.25
+n_masked_patch: 0
+mask_drop: 0.6
+
+lr: 0.00005
+min_lr: 0.000005
+weight_decay: 0.0001
+max_epochs: 100
+patience: 20
+label_smoothing: 0.0
+class_weighting: inverse_sqrt
+balanced_sampler: false
+sampler_weighting: inverse_sqrt
+selection_metric: f1_macro
+scheduler: plateau
+scheduler_factor: 0.5
+scheduler_patience: 5
+
+amp: true
+grad_clip: 1.0

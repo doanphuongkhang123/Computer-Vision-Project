@@ -1,0 +1,28 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: FE/Dockerfile
+    shm_size: '10gb'
+    tty: true
+    stdin_open: true
+    ports:
+      - "8502:8502"
+    environment:
+      - PYTHONUNBUFFERED=1
+      # Note: The correct variable name is PYTORCH_CUDA_ALLOC_CONF
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True,max_split_size_mb:64
+      - MODEL_PATH=/mnt/disk4/video-panninng-classification/results/final/baseline_ratio0.1_seed512.pth
+    volumes:
+      - .:/app
+      - /mnt/disk4:/mnt/disk4
+    deploy:
+      resources:
+        limits:
+          memory: 32G # Adjust this to roughly 80-90% of your total Host RAM
+        reservations:
+          memory: 16G
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

@@ -1,0 +1,51 @@
+seed: 1027
+
+data_dir: data
+train_csv: data/train.csv
+val_csv: data/val.csv
+test_csv: data/test.csv
+
+results_dir: results/bracs_new_feat_path_clip
+save_name: bracs_new_feat_path_clip
+wandb: false
+wandb_project: bracs_wsi_classification
+wandb_run_name: bracs_new_feat_path_clip
+wandb_api_key: ""
+wandb_api_key_file: wandb_api_key.txt
+
+num_classes: 3
+class_names: [Benign, Atypical, Malignant]
+hidden_size: 768
+
+max_patches: null
+eval_max_patches: null
+train_sampling: random
+eval_sampling: uniform
+normalize_features: true
+
+batch_size: 2
+num_workers: 4
+grad_accum_steps: 4
+
+ratio: 0.02
+max_retrieved: 256
+dropout: 0.3
+cls_ratio: 0.8
+zero_init_head: true
+
+lr: 0.00005
+min_lr: 0.000005
+weight_decay: 0.0001
+max_epochs: 50
+patience: 10
+label_smoothing: 0.0
+class_weighting: inverse_sqrt
+balanced_sampler: false
+sampler_weighting: inverse_sqrt
+selection_metric: f1_macro
+scheduler: plateau
+scheduler_factor: 0.5
+scheduler_patience: 5
+
+amp: true
+grad_clip: 1.0
