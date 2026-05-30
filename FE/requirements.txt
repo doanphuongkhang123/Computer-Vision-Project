@@ -1,0 +1,13 @@
+flask
+torch
+torchvision
+timm
+opencv-python
+pillow
+numpy
+h5py
+scipy
+pandas
+werkzeug
+huggingface_hub
+python-dotenv
