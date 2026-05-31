@@ -25,12 +25,13 @@ from PIL import Image
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models.vit_transformer_model import VTransAdaptive
 
-os.environ["HF_TOKEN"] = "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"
+os.environ["HF_TOKEN"] = "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"
 os.environ["HUGGING_FACE_HUB_TOKEN"] = os.environ["HF_TOKEN"]
 
 CONFIG = os.environ.get("CONFIG", "configs/bracs_server.yaml")
 CHECKPOINT = os.environ.get("CHECKPOINT", "best.pth")
 DEVICE = os.environ.get("DEVICE", "cuda" if torch.cuda.is_available() else "cpu")
+print(f"[demo] device = {DEVICE}")
 PATCH = 224
 
 with open(CONFIG) as f:
@@ -49,6 +50,10 @@ def _load():
         mlp_layer=timm.layers.SwiGLUPacked, act_layer=torch.nn.SiLU,
         reg_tokens=8, dynamic_img_size=True,
     )
+    if not os.environ.get("HF_HUB_OFFLINE"):
+        from huggingface_hub import login, whoami
+        login(token=os.environ["HF_TOKEN"], add_to_git_credential=False)
+        print(f"[demo] HuggingFace user: {whoami()['name']}")
     enc = timm.create_model("hf-hub:MahmoodLab/UNI2-h", pretrained=True, **kw).eval().to(DEVICE)
     tf = timm.data.create_transform(**timm.data.resolve_model_data_config(enc), is_training=False)
 
@@ -79,27 +84,32 @@ def _tiles(img, g):
 def predict(img, grid):
     if img is None:
         return {}, None
-    _load()
-    g = int(grid)
-    x = torch.stack([_M["tf"](p) for p in _tiles(img, g)]).to(DEVICE)
-    feats = torch.cat([_M["enc"](x[i:i + 32]).float() for i in range(0, len(x), 32)]).unsqueeze(0)
+    try:
+        _load()
+        g = int(grid)
+        x = torch.stack([_M["tf"](p) for p in _tiles(img, g)]).to(DEVICE)
+        feats = torch.cat([_M["enc"](x[i:i + 32]).float() for i in range(0, len(x), 32)]).unsqueeze(0)
 
-    mask = torch.zeros(1, feats.size(1), dtype=torch.bool, device=DEVICE)
-    logits, attn, idxs = _M["clf"](feats, mask, epoch=0, stride=1, return_attn=True)
-    probs = F.softmax(logits, dim=1)[0].cpu().numpy()
+        mask = torch.zeros(1, feats.size(1), dtype=torch.bool, device=DEVICE)
+        logits, attn, idxs = _M["clf"](feats, mask, epoch=0, stride=1, return_attn=True)
+        probs = F.softmax(logits, dim=1)[0].cpu().numpy()
 
-    # mean prototype->patch attention, mapped back to original tile order
-    imp = torch.zeros(feats.size(1), device=DEVICE)
-    imp[idxs] = attn.mean(1)[0]
-    imp = imp.cpu().numpy().reshape(g, g)
-    imp = (imp - imp.min()) / (np.ptp(imp) + 1e-8)
+        # mean prototype->patch attention, mapped back to original tile order
+        imp = torch.zeros(feats.size(1), device=DEVICE)
+        imp[idxs] = attn.mean(1)[0]
+        imp = imp.cpu().numpy().reshape(g, g)
+        imp = (imp - imp.min()) / (np.ptp(imp) + 1e-8)
 
-    h, w = img.shape[:2]
-    heat = cv2.resize((imp * 255).astype(np.uint8), (w, h), interpolation=cv2.INTER_CUBIC)
-    heat = cv2.cvtColor(cv2.applyColorMap(heat, cv2.COLORMAP_JET), cv2.COLOR_BGR2RGB)
-    overlay = (0.55 * img + 0.45 * heat).astype(np.uint8)
+        h, w = img.shape[:2]
+        heat = cv2.resize((imp * 255).astype(np.uint8), (w, h), interpolation=cv2.INTER_CUBIC)
+        heat = cv2.cvtColor(cv2.applyColorMap(heat, cv2.COLORMAP_JET), cv2.COLOR_BGR2RGB)
+        overlay = (0.55 * img[..., :3] + 0.45 * heat).astype(np.uint8)
 
-    return {CLASS_NAMES[i]: float(probs[i]) for i in range(len(CLASS_NAMES))}, overlay
+        return {CLASS_NAMES[i]: float(probs[i]) for i in range(len(CLASS_NAMES))}, overlay
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise gr.Error(f"{type(e).__name__}: {e}")
 
 
 demo = gr.Interface(
