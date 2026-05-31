@@ -29,7 +29,7 @@ os.environ["HF_TOKEN"] = "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"
 os.environ["HUGGING_FACE_HUB_TOKEN"] = os.environ["HF_TOKEN"]
 
 CONFIG = os.environ.get("CONFIG", "configs/bracs_server.yaml")
-CHECKPOINT = os.environ.get("CHECKPOINT", "best.pth")
+CKPT_REPO = os.environ.get("CKPT_REPO", "tp140205/cv")
 DEVICE = os.environ.get("DEVICE", "cuda" if torch.cuda.is_available() else "cpu")
 print(f"[demo] device = {DEVICE}")
 PATCH = 224
@@ -62,14 +62,13 @@ def _load():
         dropout=float(cfg["dropout"]), hidden_dim=int(cfg["hidden_size"]),
         cls_ratio=float(cfg["cls_ratio"]), max_retrieved=cfg.get("max_retrieved"),
     )
-    if CHECKPOINT and os.path.exists(CHECKPOINT):
-        ck = torch.load(CHECKPOINT, map_location="cpu")
-        sd = ck.get("state_dict", ck.get("model", ck))
-        sd = {k.replace("module.", ""): v for k, v in sd.items()}
-        missing, _ = clf.load_state_dict(sd, strict=False)
-        print(f"Loaded checkpoint {CHECKPOINT} (missing keys: {len(missing)})")
-    else:
-        print("WARNING: no CHECKPOINT set -> random classifier weights (predictions not meaningful).")
+    from huggingface_hub import hf_hub_download
+    ckpt = hf_hub_download(CKPT_REPO, "best.pth")
+    ck = torch.load(ckpt, map_location="cpu")
+    sd = ck.get("state_dict", ck.get("model", ck))
+    sd = {k.replace("module.", ""): v for k, v in sd.items()}
+    missing, _ = clf.load_state_dict(sd, strict=False)
+    print(f"Loaded checkpoint {ckpt} (missing keys: {len(missing)})")
     clf.eval().to(DEVICE)
     _M.update(enc=enc, tf=tf, clf=clf)
 
@@ -112,7 +111,7 @@ def predict(img, grid):
         raise gr.Error(f"{type(e).__name__}: {e}")
 
 
-with gr.Blocks(theme=gr.themes.Soft(primary_hue="indigo"), title="PathFlow") as demo:
+with gr.Blocks(title="PathFlow") as demo:
     gr.Markdown(
         "# 🔬 PathFlow — Histopathology Classifier\n"
         "Upload an H&E tissue image. It is tiled into patches, encoded with **UNI2**, "
@@ -132,4 +131,5 @@ with gr.Blocks(theme=gr.themes.Soft(primary_hue="indigo"), title="PathFlow") as 
     inp.upload(predict, [inp, grid], [out_label, out_heat])
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=8502, share=True)
+    demo.launch(server_name="0.0.0.0", server_port=8502, share=True,
+                theme=gr.themes.Soft(primary_hue="indigo"))
