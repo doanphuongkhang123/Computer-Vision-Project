@@ -112,16 +112,24 @@ def predict(img, grid):
         raise gr.Error(f"{type(e).__name__}: {e}")
 
 
-demo = gr.Interface(
-    fn=predict,
-    inputs=[gr.Image(type="numpy", label="Tissue image"),
-            gr.Slider(4, 12, value=8, step=1, label="Patch grid (N x N)")],
-    outputs=[gr.Label(num_top_classes=len(CLASS_NAMES), label="Classification + confidence"),
-             gr.Image(label="Attention heatmap (where the model looks)")],
-    title="PathFlow / VTransAdaptive demo",
-    description="Image is tiled into patches, encoded with UNI2, and classified. "
-                "The heatmap shows the learnable-prototype cross-attention per patch.",
-)
+with gr.Blocks(theme=gr.themes.Soft(primary_hue="indigo"), title="PathFlow") as demo:
+    gr.Markdown(
+        "# 🔬 PathFlow — Histopathology Classifier\n"
+        "Upload an H&E tissue image. It is tiled into patches, encoded with **UNI2**, "
+        "and classified by **VTransAdaptive**. The heatmap shows the prototype "
+        "cross-attention — *where the model looks*."
+    )
+    with gr.Row(equal_height=True):
+        with gr.Column(scale=1):
+            inp = gr.Image(type="numpy", label="Tissue image", height=360)
+            grid = gr.Slider(4, 12, value=8, step=1, label="Patch grid (N × N)")
+            btn = gr.Button("Analyze", variant="primary")
+        with gr.Column(scale=1):
+            out_label = gr.Label(num_top_classes=len(CLASS_NAMES), label="Diagnosis")
+            out_heat = gr.Image(label="Attention heatmap", height=360)
+
+    btn.click(predict, [inp, grid], [out_label, out_heat])
+    inp.upload(predict, [inp, grid], [out_label, out_heat])
 
 if __name__ == "__main__":
     demo.launch(server_name="0.0.0.0", server_port=8502, share=True)
