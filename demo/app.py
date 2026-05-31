@@ -33,6 +33,7 @@ CKPT_REPO = os.environ.get("CKPT_REPO", "tp140205/cv")
 DEVICE = os.environ.get("DEVICE", "cuda" if torch.cuda.is_available() else "cpu")
 print(f"[demo] device = {DEVICE}")
 PATCH = 224
+TARGET_MAG = int(os.environ.get("TARGET_MAG", 40))  # must match feature-extraction magnification
 
 with open(CONFIG) as f:
     cfg = yaml.safe_load(f)
@@ -108,13 +109,13 @@ def load_wsi(path, patch=256, target_mag=20, tissue_thr=0.08, max_patches=3000, 
 
 
 @torch.no_grad()
-def predict(file, target_mag):
+def predict(file):
     if file is None:
         return {}, None
     try:
         path = file.name if hasattr(file, "name") else file
         _load()
-        patches, cells, (rows, cols), disp = load_wsi(path, target_mag=int(target_mag))
+        patches, cells, (rows, cols), disp = load_wsi(path, target_mag=TARGET_MAG)
 
         x = torch.stack([_M["tf"](p) for p in patches]).to(DEVICE)
         feats = torch.cat([_M["enc"](x[i:i + 64]).float() for i in range(0, len(x), 64)]).unsqueeze(0)
@@ -159,13 +160,21 @@ with gr.Blocks(title="PathFlow") as demo:
     with gr.Row(equal_height=True):
         with gr.Column(scale=1):
             inp = gr.File(label="Whole-slide image", file_types=[".svs", ".tif", ".tiff", ".ndpi"])
-            mag = gr.Dropdown([10, 20, 40], value=20, label="Magnification (×)")
             btn = gr.Button("Analyze", variant="primary")
         with gr.Column(scale=1):
             out_label = gr.Label(num_top_classes=len(CLASS_NAMES), label="Diagnosis")
             out_heat = gr.Image(label="Attention heatmap", height=420)
 
-    btn.click(predict, [inp, mag], [out_label, out_heat])
+    btn.click(predict, [inp], [out_label, out_heat])
+
+    samples = [s for s in SAMPLES if os.path.exists(s)]
+    if samples:
+        gr.Examples(
+            examples=[[s] for s in samples],
+            inputs=[inp], outputs=[out_label, out_heat],
+            fn=predict, cache_examples=True,
+            label="Preloaded slides (click = instant, no upload)",
+        )
 
 if __name__ == "__main__":
     demo.launch(server_name="0.0.0.0", server_port=8502, share=True,

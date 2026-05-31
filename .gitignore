@@ -18,6 +18,7 @@ path/to/feats/
 *.pth
 *.h5
 *.hdf5
+*.svs
 
 baselines/*/data/
 baselines/*/results/
