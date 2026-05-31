@@ -34,6 +34,7 @@ DEVICE = os.environ.get("DEVICE", "cuda" if torch.cuda.is_available() else "cpu"
 print(f"[demo] device = {DEVICE}")
 PATCH = 224
 TARGET_MAG = int(os.environ.get("TARGET_MAG", 40))  # must match feature-extraction magnification
+SAMPLES = os.environ.get("SAMPLES", "BRACS_1003718.svs,BRACS_1003677_Malignant.svs").split(",")
 
 with open(CONFIG) as f:
     cfg = yaml.safe_load(f)
