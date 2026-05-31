@@ -25,8 +25,11 @@ from PIL import Image
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models.vit_transformer_model import VTransAdaptive
 
+os.environ["HF_TOKEN"] = "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"
+os.environ["HUGGING_FACE_HUB_TOKEN"] = os.environ["HF_TOKEN"]
+
 CONFIG = os.environ.get("CONFIG", "configs/bracs_server.yaml")
-CHECKPOINT = os.environ.get("CHECKPOINT", "")
+CHECKPOINT = os.environ.get("CHECKPOINT", "best.pth")
 DEVICE = os.environ.get("DEVICE", "cuda" if torch.cuda.is_available() else "cpu")
 PATCH = 224
 
