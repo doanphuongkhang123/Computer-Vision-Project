@@ -161,18 +161,6 @@ def predict(file):
         raise gr.Error(f"{type(e).__name__}: {e}")
 
 
-def show_region(gallery, evt: gr.SelectData):
-    if not gallery:
-        return None
-    item = gallery[evt.index]
-    if isinstance(item, (list, tuple)):
-        return item[0]
-    if isinstance(item, dict):
-        img = item.get("image") or item.get("name")
-        return img.get("path") if isinstance(img, dict) else img
-    return item
-
-
 with gr.Blocks(title="PathFlow") as demo:
     gr.Markdown(
         "# 🔬 PathFlow — WSI Histopathology Classifier\n"
@@ -189,12 +177,8 @@ with gr.Blocks(title="PathFlow") as demo:
         with gr.Column(scale=2):
             out_heat = gr.Image(label="Attention heatmap (full slide)", height=420)
 
-    gr.Markdown("### Critical regions — model-selected patches (click to view larger)")
-    with gr.Row():
-        out_regions = gr.Gallery(label="Selected patches", columns=4, height=300,
-                                 object_fit="contain", scale=2)
-        big_region = gr.Image(label="Selected region", height=300, scale=1)
-    out_regions.select(show_region, [out_regions], big_region)
+    gr.Markdown("### Critical regions — model-selected patches (click to enlarge & navigate)")
+    out_regions = gr.Gallery(label="Selected patches", columns=4, height=300, object_fit="contain")
 
     btn.click(predict, [inp], [out_label, out_heat, out_regions])
 
