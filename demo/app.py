@@ -34,7 +34,11 @@ DEVICE = os.environ.get("DEVICE", "cuda" if torch.cuda.is_available() else "cpu"
 print(f"[demo] device = {DEVICE}")
 PATCH = 224
 TARGET_MAG = int(os.environ.get("TARGET_MAG", 40))  # must match feature-extraction magnification
-SAMPLES = os.environ.get("SAMPLES", "BRACS_1003718.svs,BRACS_1003677_Malignant.svs").split(",")
+SAMPLES = os.environ.get(
+    "SAMPLES",
+    "BRACS_1003718.svs,BRACS_1003694_Atypical.svs,BRACS_1003677_Malignant.svs",
+).split(",")
+TOPK = int(os.environ.get("TOPK", 8))  # number of critical regions to surface
 
 with open(CONFIG) as f:
     cfg = yaml.safe_load(f)
@@ -128,6 +132,7 @@ def predict(file):
         imp = torch.zeros(feats.size(1), device=DEVICE)
         imp[idxs] = attn.mean(1)[0]
         imp = imp.cpu().numpy()
+        imp_n = (imp - imp.min()) / (np.ptp(imp) + 1e-8)
 
         # per-patch attention -> slide grid -> heatmap over tissue only
         grid = np.zeros((rows, cols), np.float32)
@@ -144,11 +149,28 @@ def predict(file):
                               cv2.COLOR_BGR2RGB)
         overlay = (disp * (1 - 0.5 * alpha) + heat_c * (0.5 * alpha)).astype(np.uint8)
 
-        return {CLASS_NAMES[i]: float(probs[i]) for i in range(len(CLASS_NAMES))}, overlay
+        # critical regions: highest-attention patches for a doctor to inspect
+        order = np.argsort(imp)[::-1][:min(TOPK, len(patches))]
+        regions = [(patches[i], f"#{rank + 1} · attn {imp_n[i]:.2f}") for rank, i in enumerate(order)]
+
+        probs_d = {CLASS_NAMES[i]: float(probs[i]) for i in range(len(CLASS_NAMES))}
+        return probs_d, overlay, regions
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise gr.Error(f"{type(e).__name__}: {e}")
+
+
+def show_region(gallery, evt: gr.SelectData):
+    if not gallery:
+        return None
+    item = gallery[evt.index]
+    if isinstance(item, (list, tuple)):
+        return item[0]
+    if isinstance(item, dict):
+        img = item.get("image") or item.get("name")
+        return img.get("path") if isinstance(img, dict) else img
+    return item
 
 
 with gr.Blocks(title="PathFlow") as demo:
@@ -158,21 +180,29 @@ with gr.Blocks(title="PathFlow") as demo:
         "and classified by **VTransAdaptive**. The heatmap shows the prototype "
         "cross-attention over the slide — *where the model looks*."
     )
-    with gr.Row(equal_height=True):
-        with gr.Column(scale=1):
-            inp = gr.File(label="Whole-slide image", file_types=[".svs", ".tif", ".tiff", ".ndpi"])
-            btn = gr.Button("Analyze", variant="primary")
-        with gr.Column(scale=1):
+    with gr.Row(equal_height=False):
+        with gr.Column(scale=1, min_width=240):
+            inp = gr.File(label="Whole-slide image (.svs)",
+                          file_types=[".svs", ".tif", ".tiff", ".ndpi"], height=120)
+            btn = gr.Button("Analyze", variant="primary", size="sm")
             out_label = gr.Label(num_top_classes=len(CLASS_NAMES), label="Diagnosis")
-            out_heat = gr.Image(label="Attention heatmap", height=420)
+        with gr.Column(scale=2):
+            out_heat = gr.Image(label="Attention heatmap (full slide)", height=420)
 
-    btn.click(predict, [inp], [out_label, out_heat])
+    gr.Markdown("### Critical regions — model-selected patches (click to view larger)")
+    with gr.Row():
+        out_regions = gr.Gallery(label="Selected patches", columns=4, height=300,
+                                 object_fit="contain", scale=2)
+        big_region = gr.Image(label="Selected region", height=300, scale=1)
+    out_regions.select(show_region, [out_regions], big_region)
+
+    btn.click(predict, [inp], [out_label, out_heat, out_regions])
 
     samples = [s for s in SAMPLES if os.path.exists(s)]
     if samples:
         gr.Examples(
             examples=[[s] for s in samples],
-            inputs=[inp], outputs=[out_label, out_heat],
+            inputs=[inp], outputs=[out_label, out_heat, out_regions],
             fn=predict, cache_examples=True,
             label="Preloaded slides (click = instant, no upload)",
         )
