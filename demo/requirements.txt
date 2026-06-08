@@ -1,0 +1,10 @@
+torch
+torchvision
+timm
+opencv-python
+pillow
+numpy
+pyyaml
+huggingface_hub
+gradio
+tiffslide

@@ -13,7 +13,7 @@ class AdaptiveCrossAttentionPooling(nn.Module):
         self.cross_attn = nn.MultiheadAttention(dim, heads, batch_first=True)
         self.norm = nn.LayerNorm(dim)
 
-    def forward(self, x, attn_mask=None):
+    def forward(self, x, attn_mask=None, return_attn=False):
         b, t, _ = x.shape
         if attn_mask is None:
             k = max(4, int(t * self.ratio))
@@ -32,8 +32,9 @@ class AdaptiveCrossAttentionPooling(nn.Module):
         freq = torch.zeros(b, self.max_tokens, device=x.device)
         freq.scatter_add_(1, token_idx, weights.reshape(b, -1).to(freq.dtype))
         queries = self.cluster_pool[freq.topk(k, dim=-1).indices]
-        out, _ = self.cross_attn(queries, x, x, key_padding_mask=attn_mask)
-        return self.norm(out)
+        out, attn = self.cross_attn(queries, x, x, key_padding_mask=attn_mask)
+        out = self.norm(out)
+        return (out, attn) if return_attn else out
 
 
 class VTransAdaptive(nn.Module):
@@ -59,7 +60,7 @@ class VTransAdaptive(nn.Module):
         self.temporal_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
         self.fc = nn.Linear(hidden_dim, num_classes)
 
-    def forward(self, feats, attn_mask, epoch=0, stride=1):
+    def forward(self, feats, attn_mask, epoch=0, stride=1, return_attn=False):
         b, t, _ = feats.shape
         if attn_mask.dim() == 1:
             attn_mask = torch.arange(t, device=feats.device)[None, :] >= attn_mask[:, None]
@@ -68,8 +69,14 @@ class VTransAdaptive(nn.Module):
         feats = feats[:, idxs]
         attn_mask = attn_mask[:, idxs]
 
-        clustered_feats = self.token_pooler(feats, attn_mask)
+        if return_attn:
+            clustered_feats, attn = self.token_pooler(feats, attn_mask, return_attn=True)
+        else:
+            clustered_feats = self.token_pooler(feats, attn_mask)
         cls = self.cls_token.expand(b, -1, -1)
         out = self.temporal_encoder(torch.cat([cls, clustered_feats], dim=1))
         out = out[:, 0] * self.cls_ratio + out[:, 1:].mean(dim=1) * (1 - self.cls_ratio)
-        return self.fc(out)
+        logits = self.fc(out)
+        if return_attn:
+            return logits, attn, idxs
+        return logits
