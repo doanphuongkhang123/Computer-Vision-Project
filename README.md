@@ -176,6 +176,7 @@ Important fields:
 - `max_patches`, `eval_max_patches`: cap WSI bag size, or `null` for full WSI.
 - `ratio`: prototype retrieval ratio.
 - `max_retrieved`: maximum retrieved prototype tokens.
+- `prototype_dropout`: fraction of the prototype bank hidden per WSI during training.
 - `cls_ratio`: CLS/mean fusion weight.
 - `normalize_features`: L2-normalize patch embeddings.
 - `selection_metric`: checkpoint selection metric.

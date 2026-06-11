@@ -4,14 +4,38 @@ import torch.nn.functional as F
 
 
 class AdaptiveCrossAttentionPooling(nn.Module):
-    def __init__(self, dim, ratio=0.25, max_tokens=1024, heads=8, max_retrieved=None):
+    def __init__(
+        self,
+        dim,
+        ratio=0.25,
+        max_tokens=1024,
+        heads=8,
+        max_retrieved=None,
+        prototype_dropout=0.0,
+    ):
         super().__init__()
+        if not 0.0 <= prototype_dropout < 1.0:
+            raise ValueError("prototype_dropout must be in [0, 1)")
+
         self.ratio = ratio
         self.max_tokens = max_tokens
         self.max_retrieved = None if max_retrieved is None else int(max_retrieved)
+        self.prototype_dropout = float(prototype_dropout)
         self.cluster_pool = nn.Parameter(torch.randn(max_tokens, dim))
         self.cross_attn = nn.MultiheadAttention(dim, heads, batch_first=True)
         self.norm = nn.LayerNorm(dim)
+
+    def _prototype_keep_mask(self, batch_size, retrieved_count, device):
+        keep_mask = torch.ones(batch_size, self.max_tokens, dtype=torch.bool, device=device)
+        if not self.training or self.prototype_dropout == 0.0:
+            return keep_mask
+
+        drop_count = int(self.max_tokens * self.prototype_dropout)
+        drop_count = min(drop_count, self.max_tokens - retrieved_count)
+        if drop_count > 0:
+            drop_idx = torch.rand(batch_size, self.max_tokens, device=device).topk(drop_count, dim=-1).indices
+            keep_mask.scatter_(1, drop_idx, False)
+        return keep_mask
 
     def forward(self, x, attn_mask=None, return_attn=False):
         b, t, _ = x.shape
@@ -24,6 +48,8 @@ class AdaptiveCrossAttentionPooling(nn.Module):
         k = max(1, min(k, self.max_tokens))
 
         sim = torch.einsum("btd,kd->btk", F.normalize(x, dim=-1), F.normalize(self.cluster_pool, dim=-1))
+        prototype_keep_mask = self._prototype_keep_mask(b, k, x.device)
+        sim = sim.masked_fill(~prototype_keep_mask[:, None, :], float("-inf"))
         token_idx = sim.topk(k, dim=-1).indices.reshape(b, -1)
         weights = torch.ones(b, t, k, dtype=x.dtype, device=x.device)
         if attn_mask is not None:
@@ -31,6 +57,7 @@ class AdaptiveCrossAttentionPooling(nn.Module):
 
         freq = torch.zeros(b, self.max_tokens, device=x.device)
         freq.scatter_add_(1, token_idx, weights.reshape(b, -1).to(freq.dtype))
+        freq = freq.masked_fill(~prototype_keep_mask, float("-inf"))
         queries = self.cluster_pool[freq.topk(k, dim=-1).indices]
         out, attn = self.cross_attn(queries, x, x, key_padding_mask=attn_mask)
         out = self.norm(out)
@@ -46,6 +73,7 @@ class VTransAdaptive(nn.Module):
         ratio=0.5,
         cls_ratio=0.8,
         max_retrieved=None,
+        prototype_dropout=0.0,
     ):
         super().__init__()
         self.cls_ratio = cls_ratio
@@ -54,6 +82,7 @@ class VTransAdaptive(nn.Module):
             ratio=ratio,
             heads=8,
             max_retrieved=max_retrieved,
+            prototype_dropout=prototype_dropout,
         )
         self.cls_token = nn.Parameter(torch.randn(1, 1, hidden_dim))
         encoder_layer = nn.TransformerEncoderLayer(hidden_dim, 8, dropout=dropout, batch_first=True)

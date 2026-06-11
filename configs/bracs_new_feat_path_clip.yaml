@@ -30,6 +30,7 @@ grad_accum_steps: 4
 ratio: 0.02
 max_retrieved: 256
 dropout: 0.3
+prototype_dropout: 0.1
 cls_ratio: 0.8
 zero_init_head: true
 

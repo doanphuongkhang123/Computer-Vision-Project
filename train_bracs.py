@@ -110,6 +110,7 @@ def make_model(cfg, device):
         hidden_dim=int(cfg["hidden_size"]),
         cls_ratio=float(cfg["cls_ratio"]),
         max_retrieved=optional_int(cfg.get("max_retrieved")),
+        prototype_dropout=float(cfg.get("prototype_dropout", 0.0)),
     )
     model = VTransAdaptive(**common)
     if bool(cfg.get("zero_init_head", False)):
