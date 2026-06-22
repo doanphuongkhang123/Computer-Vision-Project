@@ -16,6 +16,7 @@ path/to/feats/
 
 *.pt
 *.pth
+!baselines/*/checkpoints/*.pth
 *.h5
 *.hdf5
 *.svs
